@@ -65,8 +65,9 @@ def edns_all_ips():
     res_ips = {}
     for prov in providers.keys():
         res_ips[prov] = {}
-        for orgin in IPS_NA + IPS_AS + IPS_EU + IPS_SA + IPS_OC:
-            res_ips[prov][origin] = edns.do_query(GOOGLE, providers[prov], origin[0], 32, timeout=4.0)
+        for origin in IPS_NA + IPS_AS + IPS_EU + IPS_SA + IPS_OC:
+            result = edns.do_query(GOOGLE, providers[prov], origin[0], 32, timeout=4.0)
+            res_ips[prov][origin[0]] = [x.split(' ')[2] for x in result['records']]
     print(res_ips)
 
 if __name__ == "__main__":

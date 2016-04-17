@@ -4,6 +4,8 @@ saves the results in a Pickle:
 
 #Global
 import dns
+import dns.reversename
+import dns.resolver
 
 #Local
 import edns
@@ -68,7 +70,17 @@ def edns_all_ips():
         for origin in IPS_NA + IPS_AS + IPS_EU + IPS_SA + IPS_OC:
             result = edns.do_query(GOOGLE, providers[prov], origin[0], 32, timeout=4.0)
             res_ips[prov][origin[0]] = [x.split(' ')[2] for x in result['records']]
-    print(res_ips)
+    rev_dns = {}
+    for prov in providers.keys():
+        for origin in res_ips[prov].keys():
+            for ip in res_ips[prov][origin]:
+                try:
+                    rev_lookup = dns.reversename.from_address(ip)
+                    rev_result = str(dns.resolver.query(rev_lookup, "PTR")[0])
+                except (dns.resolver.NXDOMAIN, dns.exception.SyntaxError, dns.resolver.NoNameservers) as e:
+                    rev_result = e
+                rev_dns[ip] = rev_result
+    print(rev_dns)
 
 if __name__ == "__main__":
     print("dns scanner")

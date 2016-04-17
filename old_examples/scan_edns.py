@@ -3,6 +3,7 @@ saves the results in a Pickle:
     {ip: provider: [reverse_dns_hostnames]}"""
 
 #Global
+import dns
 
 #Local
 import edns

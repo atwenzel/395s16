@@ -1,0 +1,5 @@
+dns scanner
+('72.21.91.8', NXDOMAIN())
+('93.184.220.20', NXDOMAIN())
+('68.232.44.251', NXDOMAIN())
+('117.18.237.191', NXDOMAIN())

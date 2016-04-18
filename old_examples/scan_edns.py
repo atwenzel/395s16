@@ -56,7 +56,7 @@ providers = {
     "alibaba": "img.alicdn.com",
     "cloudfront": "st.deviantart.net",
     "cdn77": "922977808.r.cdn77.net",
-    "cdnetworks": "cdnw.cdnplanets.com.cdngc.net",
+    "cdnetworks": "cdnw.cdnplanet.com.cdngc.net",
     "adnxs": "ib.adnx.com"
 }
 
@@ -72,6 +72,7 @@ def edns_all_ips():
             res_ips[prov][origin[0]] = [x.split(' ')[2] for x in result['records']]
     rev_dns = {}
     for prov in providers.keys():
+	rev_dns[prov] = {}
         for origin in res_ips[prov].keys():
             for ip in res_ips[prov][origin]:
                 try:
@@ -79,9 +80,11 @@ def edns_all_ips():
                     rev_result = str(dns.resolver.query(rev_lookup, "PTR")[0])
                 except (dns.resolver.NXDOMAIN, dns.exception.SyntaxError, dns.resolver.NoNameservers) as e:
                     rev_result = e
-                rev_dns[ip] = rev_result
-    print(rev_dns)
+                rev_dns[prov][ip] = rev_result
+    return rev_dns
 
 if __name__ == "__main__":
     print("dns scanner")
-    edns_all_ips()
+    all_rev_dns = edns_all_ips()
+    for key in all_rev_dns['adnxs'].keys():
+        print(key, all_rev_dns['adnxs'][key])

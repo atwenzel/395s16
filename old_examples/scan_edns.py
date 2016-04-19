@@ -6,6 +6,7 @@ saves the results in a Pickle:
 import dns
 import dns.reversename
 import dns.resolver
+import socket
 
 #Local
 import edns
@@ -57,7 +58,7 @@ providers = {
     "cloudfront": "st.deviantart.net",
     "cdn77": "922977808.r.cdn77.net",
     "cdnetworks": "cdnw.cdnplanet.com.cdngc.net",
-    "adnxs": "ib.adnx.com"
+    "adnxs": "ib.adnxs.com"
 }
 
 GOOGLE = '8.8.8.8'
@@ -72,7 +73,7 @@ def edns_all_ips():
             res_ips[prov][origin[0]] = [x.split(' ')[2] for x in result['records']]
     rev_dns = {}
     for prov in providers.keys():
-	rev_dns[prov] = {}
+    	rev_dns[prov] = {}
         for origin in res_ips[prov].keys():
             for ip in res_ips[prov][origin]:
                 try:
@@ -86,5 +87,5 @@ def edns_all_ips():
 if __name__ == "__main__":
     print("dns scanner")
     all_rev_dns = edns_all_ips()
-    for key in all_rev_dns['adnxs'].keys():
-        print(key, all_rev_dns['adnxs'][key])
+    for key in all_rev_dns['edgecast'].keys():
+        print(key, all_rev_dns['edgecast'][key])

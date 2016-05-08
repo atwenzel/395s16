@@ -76,7 +76,7 @@ def qps_update_count():
 
 ##################################
 
-class furyGraph:
+class furyGraph(object):
     def __init__(self, start, finish=None, match_tier=2, debug=False, 
                  candidate_max=None, vote_sample=1.0, prov_file="None",
                  no_opp_finding=False,):
@@ -139,7 +139,7 @@ class furyGraph:
         # Find opportunistic paths when you hit the limit?
         self.no_opp_finding = no_opp_finding
 
-    def reset_dest(self, dest):
+    def reset_dest(self, dest, src=None):
         """ Reset and get things ready for a run on the same graph """
         self.finish = dest
 
@@ -154,6 +154,12 @@ class furyGraph:
         self.current_path = []
         self.complete = False
 
+        if src != None:
+            self.start = src
+            
+            if src not in self.graph.node:
+                raise RuntimeError("What did you do...")
+             
 
     def dump_params(self):
         params = {}
@@ -168,6 +174,10 @@ class furyGraph:
 
         return params
 
+    def clear_scans(self):
+        for node in self.graph.node:
+            self.graph.node[node]['scanned_set'] = set()
+    
     ######################################################
     #                                                    #
     #                                                    #
@@ -340,7 +350,8 @@ class furyGraph:
             #utils.print_path(self.graph, shortest_path, self.finish, self.target_list)
             dist, report = utils.print_path(self.graph, shortest_path, target_path, self.target_list,report)
             #self.plot() 
-            a_path = utils.annotated_path(shortest_path, self.graph, end_path=target_path)
+            #a_path = utils.annotated_path(shortest_path, self.graph, end_path=target_path)
+            a_path = [] # BAD BAD BAD XXX XXX XXX
 
         else:
             
@@ -349,8 +360,8 @@ class furyGraph:
             last_node = self.current_path[-1]
             dist, report = utils.print_path(self.graph, self.current_path, string=report) 
             
-            a_path = utils.annotated_path(self.current_path, self.graph)
-
+            #a_path = utils.annotated_path(self.current_path, self.graph)
+            a_path = [] # BAD BAD BAD XXX XXX XXX
             dist = -1
 
         return dist, report, a_path
@@ -646,7 +657,7 @@ class furyGraph:
 
         prev_list = [self.finish,]
         while tier <= tiers:
-            print "processing tier %d"%(tier)
+            #print "processing tier %d"%(tier)
             for node in prev_list:
                 #print "NODE: %s"%(node)
                 
@@ -940,6 +951,7 @@ class furyGraph:
             # Too far?
             if (len(self.current_path) > 75) or (passes >= 25):
                 print "\tToo long!"
+                print "==========================================="
                 return -1
                 
             passes += 1
@@ -1246,15 +1258,21 @@ def process_run_wrapper(loc_a, loc_b, loc_a_ip, loc_b_ip,
                         tiers, candidate_max, vote_sample,
                         prov_file,
                         debug=False,
-                        dump=False):
+                        dump=False,
+                        graph=None):
 
     print loc_a, loc_b
 
     # Instantiate the object
-    g = furyGraph(loc_a_ip, loc_b_ip, tiers, 
+    if graph == None:
+        g = furyGraph(loc_a_ip, loc_b_ip, tiers, 
                   candidate_max=candidate_max,
                   vote_sample=vote_sample,
                   debug=debug, prov_file=prov_file)
+    else:
+        g = graph
+        g.reset_dest(loc_b_ip, src=loc_a_ip)
+
 
     params = g.dump_params()
     # Get the logging stuff ready
@@ -1291,6 +1309,11 @@ def process_run_wrapper(loc_a, loc_b, loc_a_ip, loc_b_ip,
         #    dist = -1
 
         out_dict['distance'] = dist
+
+        if dist == 0:
+            raise RuntimeError("Got a 0 length path!")
+
+
 
         if dist == -1:
             out_dict['error'] = "Exceeded Length!"
@@ -1450,7 +1473,7 @@ def repeated_scan(origin, tier, prov_file, debug, outdir):
 
 
 if __name__ == "__main__":
-    
+
     parser = argparse.ArgumentParser(description="Fury Route - Network Distance Estimator")
     # Parameters
     parser.add_argument("--single_scan", action="store_true",
@@ -1491,7 +1514,7 @@ if __name__ == "__main__":
         "ufl": "128.227.150.11",
         "nu": "165.124.184.65",
     }
-   
+
 
 
     # Manually entered locations
@@ -1501,7 +1524,7 @@ if __name__ == "__main__":
         if args.loc_a == None or args.loc_b == None:
             print "Must Specify locations!"
             sys.exit(-1)
-    
+
         if args.loc_a not in loc_d:
             loc_1 = socket.gethostbyname(args.loc_a)
         else:
@@ -1541,7 +1564,7 @@ if __name__ == "__main__":
                                                 args.vote_sample,
                                                 prov_file,
                                                 args.debug,)
-            
+
 
         #g = furyGraph(loc_1, loc_2, tier, debug=args.debug)
         pair_key = "%s,%s"%(args.loc_a, args.loc_b)
@@ -1565,9 +1588,9 @@ if __name__ == "__main__":
             loc_1 = loc_d[args.loc_a]
 
         repeated_scan(loc_1, args.tier, args.provider_file, args.debug, args.outdir) 
-        
+
         sys.exit(0)
-            
+
     else:
         prov_file = args.provider_file
         if prov_file != "None":
@@ -1619,10 +1642,10 @@ if __name__ == "__main__":
 
                 report_f.write(report)
                 report_f.write("\n**********************\n")
-                
+
                 # Pace slightly
                 time.sleep(1)
-                
+
         json.dump(out_dict, report_json_f)
 
         for pair in out_list:

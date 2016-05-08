@@ -14,6 +14,7 @@ import time
 
 import numpy as np
 import matplotlib.pyplot as plt
+import cPickle as pickle
 
 #Local
 import fury_route
@@ -71,7 +72,19 @@ def load_config(file_name):
 
     return testconf
 
-def run_fr(origin, dest, reverse=False):
+def create_fr(origin, dest):
+    origin_ip = socket.gethostbyname(origin)
+    dest_ip = socket.gethostbyname(dest)
+
+    g = fury_route.furyGraph(origin_ip, dest_ip, 1, 
+                    candidate_max=None,
+                    vote_sample=1.0,
+                    debug=False, prov_file="None")
+
+    return g
+
+
+def run_fr(origin, dest, reverse=False, graph=None):
     """ Run fury route from origin to dest.
     If reverse=True, a failure will cause it to try the other direction """
 
@@ -89,18 +102,20 @@ def run_fr(origin, dest, reverse=False):
                                                     None, # Candidate max
                                                     1.0, # vote sample
                                                     "None", # provider file
-                                                    debug=False, dump=True)
+                                                    debug=False, dump=True,
+                                                    graph=graph)
 
     out_info.append(fr_out)
 
-    if (reverse == True):
+    if (reverse == True) and fr_out['distance'] == -1:
         params2, report2, fr_out2 = fury_route.process_run_wrapper(dest, origin, 
                                                     dest_ip, origin_ip,
                                                     1,  #tiers
                                                     None, # Candidate max
                                                     1.0, # vote sample
                                                     "None", # provider file
-                                                    debug=False, dump=True)
+                                                    debug=False, dump=True,
+                                                    graph=graph)
 
 
         out_info.append(fr_out2)
@@ -109,6 +124,74 @@ def run_fr(origin, dest, reverse=False):
 
 
     return params, report, out_info
+
+def measure_graph_diff(data_dir):
+   
+    
+    origin_pickles = glob.glob(data_dir + "/*-12h.g")
+
+    changes = []
+
+    for origin in origin_pickles:
+        # Load the original
+        original = origin[:-6] + ".g"
+        with open(original) as original_f:
+            og_g = pickle.load(original_f)
+        # Load the new one
+        with open(origin) as new_f:
+            new_g = pickle.load(new_f)
+           
+        # Compute the size difference. Currently this just shows 
+        old_size = len(og_g.graph.node)
+        new_size = len(new_g.graph.node)
+        
+        diff = new_size - old_size
+        changes.append((float(new_size)/old_size) - 1)
+        print diff, float(new_size)/old_size
+
+    print np.mean(changes)
+
+    return
+    
+def measure_perf_diff(data_dir1, data_dir2):
+    
+    # Let's load up the new data
+    new_files = glob.glob(data_dir1+"/*.json")  
+   
+    diff_list = []
+    big_diff = []
+
+    for origin in new_files:
+        print "***********************************"
+        print "Origin: %s"%(origin)
+        if not os.path.isfile(origin):
+            continue
+       
+        # Load the new data
+        data_dict = load_score_dict(origin)
+        score1, spear1, count1 = compute_perf(data_dict)
+
+        # Figure out the file name for the new data
+        base = os.path.basename(origin)
+        old_file = os.path.join(data_dir2, base)
+   
+        data_dict2 = load_score_dict(old_file)
+        score2, spear2, count2 = compute_perf(data_dict2)
+
+        diff = score2 - score1  
+
+        if abs(diff) > .1:   
+            big_diff.append(origin)
+        
+        diff_list.append(diff)
+
+
+    print big_diff
+       
+    print diff_list
+    print np.mean(diff_list)
+    print np.median(diff_list)
+    print np.std(diff_list)
 
 ############################################################
 #
@@ -124,6 +207,9 @@ def compare_perf(origin, dest_dict, prov_file):
     data_log = {}
     # Now loop over each destination
     print "Testing %s..."%(origin)
+
+    # NOTE: We could sample testconf...
+    #testconf = random.sample(testconf, 30)
     for index, dest in enumerate(testconf):
         ping = furypl.get_ping_parsed(origin, dest)
         tries = 0
@@ -138,13 +224,27 @@ def compare_perf(origin, dest_dict, prov_file):
             tries += 1
         #ping = [0, 10+index]
         #print origin, dest, ping
-       
-        params, report, fr_out = run_fr(origin, dest, reverse=True)
+      
+
+        if index == 0:
+            # Instantiate the graph the first time through 
+            
+            #g = create_fr(origin, dest)
+            with open("pickles/%s.g"%(origin), 'r') as pfile:
+                g = pickle.load(pfile)
+                g.clear_scans()
+            
+
+        params, report, fr_out = run_fr(origin, dest, reverse=True, graph=g)
 
         #print "-->Distance: %d"%(fr_out['distance'])
         
         data_log[dest] = (ping, fr_out) #avg ping
         #data_log[dest] = (ping, fr_out, fr_out2) #avg ping
+
+    # Go ahead and pickle the graph
+    with open("pickles/%s-12h.g"%(origin), 'w') as pfile:
+        pickle.dump(g, pfile)
 
     return data_log, params
 
@@ -1213,7 +1313,15 @@ if __name__  == "__main__":
         data_dir = sys.argv[2]
         random_check(data_dir) 
         
+    elif command == "--graph_check":
+        data_dir = sys.argv[2]
+        measure_graph_diff(data_dir)
 
+    elif command == "--run_comp":
+        data_dir1 = sys.argv[2]
+        data_dir2 = sys.argv[3]
+        measure_perf_diff(data_dir1, data_dir2)
+    
         
     elif command == "--plot":
         data_dir = sys.argv[2]

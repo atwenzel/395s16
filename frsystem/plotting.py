@@ -49,7 +49,7 @@ def comparisons_matched_cdf(values, values2=None, values3=None, values4=None):
 
     plt.legend(loc='lower left', frameon=False, numpoints=2)
 
-    plt.savefig("../plots/fraction_matched.eps", bbox_inches='tight')
+    #plt.savefig("../plots/fraction_matched.eps", bbox_inches='tight')
     plt.show()
 
 
@@ -193,7 +193,37 @@ def query_cache(yvals, error_bars):
 
     plt.savefig("../plots/query_cache.eps", bbox_inches='tight')
     plt.show()
+  
+
+def query_cache_cdf(values):
+    fig = plt.figure(figsize=(6,3))
    
+    plt.xlabel("Number of Queries")
+    plt.ylabel("CDF of Chains")
+   
+    plt.ylim(0, 1.1)
+    plt.xlim(0, 100)
+
+    style = ['-', '--', '-.', ':']
+
+    label = ["0-1k", "1001-2k", "2001-3k", "3001-4k", "4001-5k"]
+
+    for index, chunk in enumerate(values):
+        sorted_values = np.sort(chunk)
+        yvals = np.arange(len(sorted_values)) / float(len(sorted_values))
+
+        if index < 4:
+            plt.plot(sorted_values, yvals, lw=2, color='k', ls=style[index%4], label=label[index])
+        else:
+            plt.plot(sorted_values, yvals, lw=1, color='k', ls='--', label=label[index])
+
+
+
+    plt.legend(loc='lower right', frameon=False, numpoints=2)
+
+    plt.savefig("../plots/query_cache_cdf.eps", bbox_inches='tight')
+    plt.show()
+
 def absolute_plot(ping, fr):
   
     fig = plt.figure(figsize=(6,3))

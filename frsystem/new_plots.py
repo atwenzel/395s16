@@ -47,6 +47,29 @@ def plot_cache(data_match):
 
     plotting.query_cache(avg_list, std_list) 
 
+def plot_cache_cdf(data_file):
+    data_list = performance.load_score_dict(data_file)
+
+    # Break it into chunks 
+    chunk_size = 1000
+    print len(data_list)
+
+    chunk_list = []
+
+    index = 0
+    while index + chunk_size <= len(data_list):
+        print index
+        new_chunk = data_list[index:index+chunk_size]
+
+        count = len([x for x in new_chunk if x == 7])
+        print count
+
+        chunk_list.append(new_chunk)
+        index += chunk_size
+
+    plotting.query_cache_cdf(chunk_list)
+
+
 def plot_overtime(data_file):
     data = performance.load_score_dict(data_file)
 
@@ -91,6 +114,8 @@ if __name__ == "__main__":
         plot_completion(data_file)
     elif command == "--cache":
         plot_cache(data_file)
+    elif command == "--cachecdf":
+        plot_cache_cdf(data_file)
     elif command == "--overtime":
         plot_overtime(data_file)
 

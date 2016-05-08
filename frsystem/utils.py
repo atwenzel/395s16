@@ -125,12 +125,12 @@ def print_path(graph, path, finish=None, target_set=None, string=""):
 
         # Lets get the reverse name
         rev = dns.reversename.from_address(elt)
-        try:
-            rev_name = str(dns.resolver.query(rev, "PTR")[0])
-        except (dns.resolver.NoNameservers, dns.resolver.NXDOMAIN, dns.exception.Timeout):
-            string = output("%s %s + %d (%s)"%(elt, graph.node[elt]['provider'], cost, rev), string)
-        else:
-            string = output("%s %s + %d (%s)"%(elt, graph.node[elt]['provider'], cost, rev_name), string)
+        #try:
+        #    rev_name = str(dns.resolver.query(rev, "PTR")[0])
+        #except (dns.resolver.NoNameservers, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+        string = output("%s %s + %d (%s)"%(elt, graph.node[elt]['provider'], cost, rev), string)
+        #else:
+        #    string = output("%s %s + %d (%s)"%(elt, graph.node[elt]['provider'], cost, rev_name), string)
 
     # Ok at the end, we've computed the cost to an element of the target set,
     # but now we need to consider the cost to that first hop from the finish
@@ -156,12 +156,12 @@ def print_path(graph, path, finish=None, target_set=None, string=""):
 
             # Lets get the reverse name
             rev = dns.reversename.from_address(next_el)
-            try:
-                rev_name = str(dns.resolver.query(rev, "PTR")[0])
-            except (dns.resolver.NoNameservers, dns.resolver.NXDOMAIN, dns.exception.Timeout):
-                string = output("%s %s + %d (%s)"%(next_el, graph.node[elt]['provider'], cost, rev), string)
-            else:
-                string = output("%s %s + %d (%s)"%(next_el, graph.node[elt]['provider'], cost, rev_name), string)
+            #try:
+            #    rev_name = str(dns.resolver.query(rev, "PTR")[0])
+            #except (dns.resolver.NoNameservers, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+            string = output("%s %s + %d (%s)"%(next_el, graph.node[elt]['provider'], cost, rev), string)
+            #else:
+            #    string = output("%s %s + %d (%s)"%(next_el, graph.node[elt]['provider'], cost, rev_name), string)
 
 
     return total_cost, string

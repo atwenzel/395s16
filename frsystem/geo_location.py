@@ -1,16 +1,13 @@
 #Global
 import json
-import reimport math
+import math
+import re
 import requests
 import dns
 import dns.reversename
 
 #Approx radius of Earth in meters
 Rad = 6371000
-
-#Local
-import query_google
-
 
 def disance_val(ip1, ip2, provider1, provider2):
     ip1_host = dns.reversename.from_address(ip1)
@@ -89,7 +86,7 @@ def parse_adnxs(adnxs_hostname):
     nonum =  re.compile('[^a-zA-Z]')
     acode = nonum.sub('', adnxs_comps[-3])
     print(acode)
-    return query_google.get_latlong('Airport '+acode)
+    return get_latlong('Airport '+acode)
 
 def parse_cdn77(cdn77_hostname, apdict):
     """CDN77 structure - first element of dot separated hostname
@@ -110,7 +107,7 @@ def parse_cdn77(cdn77_hostname, apdict):
             return (float(apdict[querystring.upper()]['lat']), float(apdict[querystring.upper()]['lon']))
         except KeyError:
             pass
-    return query_google.get_latlong(querystring)
+    return get_latlong(querystring)
 
 def parse_cdnetworks(cdnetworks_hostname, apdict):
     """Cdnetworks structure - second component of second part of hostname separated by
@@ -129,7 +126,7 @@ def parse_google(google_hostname, apdict):
     """first component of hostname up to the first number is an airport code
     Google uses telmex.net.ar in South America, return Argentina for those"""
     if '.ar' in google_hostname:
-        return query_google.get_latlong('Argentina')
+        return get_latlong('Argentina')
     apcontainer = google_hostname.split('.')[0]
     acode = ''
     for char in apcontainer:
@@ -139,7 +136,7 @@ def parse_google(google_hostname, apdict):
         except ValueError:
             acode += char
     if apdict[acode.upper()]['status'] != 1:
-        return query_google.get_latlong('Airport '+acode)
+        return get_latlong('Airport '+acode)
     return (float(apdict[acode.upper()]['lat']), float(apdict[acode.upper()]['lon']))
 
 

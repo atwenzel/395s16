@@ -34,5 +34,7 @@ def get_dist(lat1, long1, lat2, long2):
    
 if __name__ == "__main__":
     # distance between lax, ord
-    d = get_dist(41.9742, -87.9073, 33.9416, -118.4085)
+    # d = get_dist(41.9742, -87.9073, 33.9416, -118.4085)
+    # distance between nyc, ord
+    d = get_dist(41.9742, -87.9073, 40.7128, -74.0059)
     print(d)

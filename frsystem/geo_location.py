@@ -5,13 +5,27 @@ import re
 import requests
 import dns
 import dns.reversename
+import dns.resolver
 
 #Approx radius of Earth in meters
 Rad = 6371000
 
 def distance_val(ip1, ip2, provider1, provider2):
-    ip1_host = dns.reversename.from_address(ip1)
-    ip2_host = dns.reversename.from_address(ip2)
+    
+    # reverse dns
+
+    try:
+        ip1_host = str(dns.resolver.query(dns.reversename.from_address(ip1), "PTR")[0])
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoNameservers) as e:
+        ip1_host = e
+    
+    try:
+        ip2_host = str(dns.resolver.query(dns.reversename.from_address(ip2), "PTR")[0])
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoNameservers) as e:
+        ip2_host = e
+
+    print ip1_host
+    print ip2_host    
     
     apdict = json.loads(open('airports_dict.json', 'r').read())
     
@@ -30,13 +44,13 @@ def distance_val(ip1, ip2, provider1, provider2):
     
     if provider2 == "adnxs":
         lat2, long2 = parse_adnxs(i2_host)
-    elif provider1 == "cdn77":
+    elif provider2 == "cdn77":
         lat2, long2 = parse_cdn77(ip2_host, apdict)
-    elif provider1 == "cdnetworks":
+    elif provider2 == "cdnetworks":
         lat2, long2 = parse_cdnetworks(ip2_host, apdict)
-    elif provider1 == "cloudfront":
+    elif provider2 == "cloudfront":
         lat2, long2 = parse_cloudfront(ip2_host, apdict)
-    elif provider1 == "google":
+    elif provider2 == "google":
         lat2, long2 = parse_google(ip2_host, apdict)
     else:
         return -1

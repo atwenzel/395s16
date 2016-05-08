@@ -433,11 +433,11 @@ class furyGraph(object):
                 qps_update_count()
   
                 #TODO: compute geographic distance here
-                #threshold = 100000
-                #provider2 = self.graph.node[node]['provider']
-                #dist = geo_location.distance_val(node1, node2, provider, provider2?)
-                #if dist < threshold:
-                #   weight = 0
+                threshold = 100000
+                provider2 = self.graph.node[node]['provider']
+                dist = geo_location.distance_val(node1, node2, provider, provider2?)
+                if dist < threshold:
+                   weight = 0
 
                 prov_weight = utils.compute_cost(provider, weight)
                 if prov_weight == 0:

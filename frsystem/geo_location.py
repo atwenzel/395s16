@@ -9,7 +9,7 @@ import dns.reversename
 #Approx radius of Earth in meters
 Rad = 6371000
 
-def disance_val(ip1, ip2, provider1, provider2):
+def distance_val(ip1, ip2, provider1, provider2):
     ip1_host = dns.reversename.from_address(ip1)
     ip2_host = dns.reversename.from_address(ip2)
     
@@ -169,3 +169,14 @@ def get_dist(lat1, long1, lat2, long2):
 
     # distance is Radius of earth * calcualted c
     return Rad*c
+
+if __name__ == "__main__":
+    #lax 54.192.137.39 cloudfront
+    #lax 54.192.137.36 cloudfront
+    #ord 52.84.14.126 cloudfront
+    #chicago 185.93.1.26 cdn77
+    #lax 37.235.108.17 cdn77
+    #hong kong 43.245.63.28 cdn77
+    print distance_val("54.192.137.39", "54.192.137.36", "cloudfront", "cloudfront")
+    print distance_val("54.192.137.39", "52.84.14.126", "cloudfront", "cloudfront")
+    print distance_val("54.192.137.39", "43.245.63.28", "cloudfront", "cdn77")

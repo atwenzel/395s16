@@ -23,4 +23,4 @@
 #done
 
 ping -c 2 $1 > /dev/null 2>&1
-ssh -T -oStrictHostKeyChecking=no "northwestern_oak@"$1 < insertions/check_on_client.sh
+ssh -T -oStrictHostKeyChecking=no "northwestern_audit@"$1 < insertions/check_on_client.sh

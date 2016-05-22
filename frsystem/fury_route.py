@@ -1,7 +1,9 @@
 # The Route graph structure built totally out of networkx graphs
 
 import argparse
-import dns import itertools import json
+import dns 
+import itertools 
+import json
 import logging
 import netaddr
 import networkx as nx
@@ -18,6 +20,8 @@ import time
 
 # Project
 import providers
+
+import geo_location
 
 
 ##################################
@@ -95,10 +99,13 @@ class furyGraph(object):
 
         # Add the start and finish
         self.graph.add_node(start, provider=['root',],
+                                   location=None,
                                    prefix=32,
                                    addr_list=[start,],
                                    scanned_set = set())
+    
         self.graph.add_node(finish, provider=['root',],
+                                    location=None,
                                     prefix=32,
                                     addr_list=[finish,],
                                     scanned_set = set())
@@ -145,6 +152,7 @@ class furyGraph(object):
 
         if dest not in self.graph.node:
             self.graph.add_node(dest, provider=['root',],
+                                        location=None,
                                         prefix=32,
                                         addr_list=[dest,],
                                         scanned_set = set())
@@ -433,11 +441,11 @@ class furyGraph(object):
                 qps_update_count()
   
                 #TODO: compute geographic distance here
-                threshold = 100000
-                provider2 = self.graph.node[node]['provider']
-                dist = geo_location.distance_val(node1, node2, provider, provider2?)
-                if dist < threshold:
-                   weight = 0
+                #threshold = 100000
+                #provider2 = self.graph.node[node]['provider']
+                #dist = geo_location.distance_val(node1, node2, provider, provider2?)
+                #if dist < threshold:
+                #   weight = 0
 
                 prov_weight = utils.compute_cost(provider, weight)
                 if prov_weight == 0:
@@ -451,6 +459,23 @@ class furyGraph(object):
                 # subnets to have a maximum of /24, to keep our scan relatively
                 # granular. 
                 subnet_list = netaddr.cidr_merge(ip_list)
+
+                #Alex
+                """Idea: make dictionary {subnet: [IPs]}, in subnet loop, 
+                if distance to node and any IP is < threshold, weight becomes 1"""
+
+                #sn2ip = {}
+                #for sn in subnet_list:
+                #    sn2ip[str(sn)] = []
+                #    for ip in ip_list:
+                #        if netaddr.IPAddress(ip) in sn:
+                #            sn2ip[str(sn)].append(str(ip))
+                #print("****Alex debug*****")
+                #print(sn2ip)
+
+                """don't actually need this, subnets are /32"""
+                            
+                airportdict = json.loads(open('airports_dict.json', 'r').read())
 
                 for ret_subnet in subnet_list:
                     # For each subnet in that new set, let's compare it against
@@ -466,6 +491,24 @@ class furyGraph(object):
                             raise
 
                         existing_subnet = netaddr.IPNetwork(existing_node+"/"+str(prefix))
+
+                        #Alex
+                        """Distance goes here:
+                            ip1 = node
+                            prov1 = self.graph.node[node]['provider']
+                            ip2 = ret_subnet.network
+                            prov2 = provider"""
+                        #do distance, change weights if necessary
+                        """save_weight = weight  #save this to restore later
+                        ip1 = node
+                        prov1 = self.graph.node[node]['provider']
+                        ip2 = str(ret_subnet.network).split('/')[0]
+                        prov2 = provider
+                        apdict = json.loads(open('airports_dict.json', 'r').read())
+                        dist = geo_location.distance_val(ip1, ip2, prov1, prov2, apdict)
+                        if dist < 500: #threshold is 500 miles
+                            #print("-*-*-*-*-*THRESHOLD MET, SETTING WEIGHT TO 1 -*-*-*-*-*-*-*")
+                            weight = 1"""
                            
                         # Is it in that subnet?
                         if ret_subnet in existing_subnet:
@@ -493,6 +536,7 @@ class furyGraph(object):
                             breakout = True 
                             break
                         else:
+                            #weight = save_weight #Alex
                             continue
                     # Double break!
                     if breakout:
@@ -502,14 +546,40 @@ class furyGraph(object):
                     # graph, so we should add it the old fashioned way
                     prefixlen = ret_subnet.prefixlen
                     ip = ret_subnet.network
+                    #calculate location for new node to be added
+                    if prefixlen < 32:
+                        print("trying a subnet")
+                        sub = netaddr.IPNetwork(str(ip)+'/'+str(prefixlen))
+                        try:
+                            list(sub)
+                        except TypeError:
+                            print(ip)
+                        for ipaddr in list(sub):
+                            loc = geo_location.get_location(str(ipaddr), provider, airportdict)
+                            if loc != None:
+                                break
+                    else:
+                        loc = geo_location.get_location(str(ip), provider, airportdict)
+                    if loc == (0.0, 0.0): #assume this is a punt
+                        loc = None
                     self.graph.add_node(str(ip),
+                                        location=loc,
                                         provider=set([provider]), # Current prov.
                                         prefix=prefixlen,
                                         addr_list = ip_list,
                                         scanned_set=set())
+                    print("added a new node at ip: "+str(ip)+" which is at "+str(loc))
                     # Add a link to the one who got sent here...
-                    self.graph.add_edge(node, str(ip), weight=weight, spring=scope,
+                    dist = None
+                    if self.graph.node[node]['location'] != None and self.graph.node[str(ip)]['location'] != None:
+                        dist = geo_location.get_dist(self.graph.node[node]['location'], self.graph.node[str(ip)]['location'])
+                    if dist != None and dist < 100000: #THRESHOLD
+                        print("SETTING WEIGHT TO 1 BECAUSE GEOGRAPHIC DISTANCE!!!!!!!!!!!!!!!!!!")
+                        self.graph.add_edge(node, str(ip), distance=dist, weight=1, spring=scope, prov_weight=prov_weight)
+                    else:
+                        self.graph.add_edge(node, str(ip), distance=dist, weight=weight, spring=scope,
                                         prov_weight=prov_weight)
+                    print("added an edge between "+str(node)+" and "+str(ip)+" which are "+str(dist)+" meters apart")
 
                 # Add it to the scanned set
                 self.graph.node[node]['scanned_set'].add(provider)
@@ -1284,10 +1354,11 @@ def process_run_wrapper(loc_a, loc_b, loc_a_ip, loc_b_ip,
     
     # Actually run it...
     start_time = time.time()
-    try:
-        ret = g.connection_scheme()
-    except (RuntimeError, dns.exception.Timeout, edns.ednsException) as e:
+    #try:
+    ret = g.connection_scheme()
+    """except (RuntimeError, dns.exception.Timeout, edns.ednsException) as e:
         # SOmething bad happend...
+        print(e)
         report = ("%s->%s:%d\n"%(loc_a, loc_b, -1))
         report += str(e)
         out_dict['distance'] = -1
@@ -1298,6 +1369,7 @@ def process_run_wrapper(loc_a, loc_b, loc_a_ip, loc_b_ip,
     except Exception as e: # Catchall
         print "Hit the catchall! %s"%(e)
         print type(e)
+        print(e)
         # Some other exception occured...
         report = ("%s->%s:%d\n"%(loc_a, loc_b, -1))
         report += str(e)
@@ -1307,26 +1379,26 @@ def process_run_wrapper(loc_a, loc_b, loc_a_ip, loc_b_ip,
         out_dict['report'] = report
         out_dict['path'] = None
 
+    else:"""
+    dist, report, a_path = g.generate_report()
+    #if ret == -1:
+    #    dist = -1
+
+    out_dict['distance'] = dist
+
+    if dist == 0:
+        raise RuntimeError("Got a 0 length path!")
+
+
+
+    if dist == -1:
+        out_dict['error'] = "Exceeded Length!"
+        out_dict['error_type'] = "length error"
     else:
-        dist, report, a_path = g.generate_report()
-        #if ret == -1:
-        #    dist = -1
-
-        out_dict['distance'] = dist
-
-        if dist == 0:
-            raise RuntimeError("Got a 0 length path!")
-
-
-
-        if dist == -1:
-            out_dict['error'] = "Exceeded Length!"
-            out_dict['error_type'] = "length error"
-        else:
-            out_dict['error'] = None
-            out_dict['error_type'] = None
-        out_dict['report'] = report
-        out_dict['path'] = a_path
+        out_dict['error'] = None
+        out_dict['error_type'] = None
+    out_dict['report'] = report
+    out_dict['path'] = a_path
     
     # Who cares why it ended
     end_time = time.time()

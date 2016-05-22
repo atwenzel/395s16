@@ -6,11 +6,12 @@ import requests
 import dns
 import dns.reversename
 import dns.resolver
+import socket
 
 #Approx radius of Earth in meters
 Rad = 6371000
 
-def distance_val(ip1, ip2, provider1, provider2):
+"""def distance_val(ip1, ip2, provider1, provider2, apdict):
     
     # reverse dns
 
@@ -24,10 +25,10 @@ def distance_val(ip1, ip2, provider1, provider2):
     except (dns.resolver.NXDOMAIN, dns.resolver.NoNameservers) as e:
         ip2_host = e
 
-    print ip1_host
-    print ip2_host    
+    #print ip1_host
+    #print ip2_host    
     
-    apdict = json.loads(open('airports_dict.json', 'r').read())
+    #apdict = json.loads(open('airports_dict.json', 'r').read())
     
     if provider1 == "adnxs":
         lat1, long1 = parse_adnxs(ip1_host)
@@ -55,8 +56,55 @@ def distance_val(ip1, ip2, provider1, provider2):
     else:
         return -1
         
-    return get_dist(lat1, long1, lat2, long2)
+    return get_dist(lat1, long1, lat2, long2)"""
 
+"""def get_distance(ip1, prov1, ip2, prov2, airportdict):
+    #Takes two ips and their respective providers and returns the best estimate of the distance between them
+    #reverse lookup the IPs
+    try:
+        hostname1 = socket.gethostbyaddr(ip1)
+    except (socket.herror):
+        return -1
+    try:
+        hostname2 = socket.gethostbyaddr(ip2)
+    except (socket.herror):
+        return -1
+    #we have two valid hostnames, try to parse them
+    lat_longs = [] #list of sets (will be len 2 if successful)
+    for hp in zip([hostname1, hostname2], [prov1, prov2]):
+        if hp[1] == 'adnxs':
+            lat_longs.append(parse_adnxs(hp[0]))
+        elif hp[1] == 'cdn77':
+            lat_longs.append(parse_cnd77(hp[0], airportdict))
+        elif hp[1] == 'cdnetworks':
+            lat_longs.append(parse_cdnetworks(hp[0], airportdict))
+        elif hp[1] == 'google':
+            lat_longs.append(parse_google(hp[0], airportdict))
+        else:
+            return -1
+    #this worked, now get distance
+    return get_dist(lat_longs[0][0], lat_longs[0][1], lat_longs[1][0], lat_longs[1][1])"""
+
+def get_location(ip, provider, airportdict):
+    """Given an IP address (not subnet) and a provider, estimate the location"""
+    #try to resolve the ip, return None if can't be done
+    try:
+        hostname = socket.gethostbyaddr(ip)[0]
+    except socket.herror:
+        return None
+    #host resolved, try to find location
+    if provider == 'adnxs':
+        return parse_adnxs(hostname)
+    elif provider == 'cdn77':
+        return parse_cdn77(hostname, airportdict)
+    elif provider == 'cdnetworks':
+        return parse_cdnetworks(hostname, airportdict)
+    elif provider == 'cloudfront':
+        return parse_cloudfront(hostname, airportdict)
+    elif provider == 'google':
+        return parse_google(hostname, airportdict)
+    else:
+        return None #we don't support this provider
 """Querying the Google geocode API"""
 
 
@@ -99,7 +147,7 @@ def parse_adnxs(adnxs_hostname):
     adnxs_comps = adnxs_hostname.split('.')
     nonum =  re.compile('[^a-zA-Z]')
     acode = nonum.sub('', adnxs_comps[-3])
-    print(acode)
+    #print(acode)
     return get_latlong('Airport '+acode)
 
 def parse_cdn77(cdn77_hostname, apdict):
@@ -128,13 +176,19 @@ def parse_cdnetworks(cdnetworks_hostname, apdict):
     hyphen is airportcode"""
     acode = cdnetworks_hostname.split('.')[1].split('-')[1]
     #return query_google.get_latlong('Airport '+acode)
-    return (float(apdict[acode.upper()]['lat']), float(apdict[acode.upper()]['lon']))
+    try:
+        return (float(apdict[acode.upper()]['lat']), float(apdict[acode.upper()]['lon']))
+    except KeyError:
+        return None
 
 def parse_cloudfront(cloudfront_hostname, apdict):
     """4th last component stripped of numbers is an airport code"""
     nonum = re.compile('[^a-zA-Z]')
     acode = nonum.sub('', cloudfront_hostname.split('.')[1])
-    return (float(apdict[acode.upper()]['lat']), float(apdict[acode.upper()]['lon']))
+    try:
+        return (float(apdict[acode.upper()]['lat']), float(apdict[acode.upper()]['lon']))
+    except KeyError:
+        return None
 
 def parse_google(google_hostname, apdict):
     """first component of hostname up to the first number is an airport code
@@ -149,12 +203,16 @@ def parse_google(google_hostname, apdict):
             break
         except ValueError:
             acode += char
-    if apdict[acode.upper()]['status'] != 1:
+    if acode.upper()in apdict.keys() and apdict[acode.upper()]['status'] != 1:
         return get_latlong('Airport '+acode)
-    return (float(apdict[acode.upper()]['lat']), float(apdict[acode.upper()]['lon']))
+    try:
+        return (float(apdict[acode.upper()]['lat']), float(apdict[acode.upper()]['lon']))
+    except KeyError:
+        return None
 
 
-def get_dist(lat1, long1, lat2, long2):
+#def get_dist(lat1, long1, lat2, long2):
+def get_dist(latlon1, latlon2):
     """Finds the great circle distance between a pair of coordinates using the haversine formula
        :param lat1: Latitude of first point represented as a decimal number in degrees (negative denotes South)
        :param long1: Longitude of first point represented as a deciman number in degrees (negative denotes West)
@@ -163,6 +221,10 @@ def get_dist(lat1, long1, lat2, long2):
 
        :return: Distance between point (lat1, long1) and point (lat2, long2) in meters
     """
+    lat1 = latlon1[0]
+    long1 = latlon1[1]
+    lat2 = latlon2[0]
+    long2 = latlon2[1]
     
     # Variable setup
     p1 = math.radians(lat1)

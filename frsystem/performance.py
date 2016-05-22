@@ -199,7 +199,8 @@ def measure_perf_diff(data_dir1, data_dir2):
 #
 ############################################################
 
-def compare_perf(origin, dest_dict, prov_file):
+#def compare_perf(origin, dest_dict, prov_file):
+def compare_perf(origin, dest_dict):
     
     testconf = dest_dict
 
@@ -230,9 +231,10 @@ def compare_perf(origin, dest_dict, prov_file):
             # Instantiate the graph the first time through 
             
             #g = create_fr(origin, dest)
-            with open("pickles/%s.g"%(origin), 'r') as pfile:
-                g = pickle.load(pfile)
-                g.clear_scans()
+            #with open("pickles/%s.g"%(origin), 'r') as pfile:
+            #    g = pickle.load(pfile)
+            #    g.clear_scans()
+            g = None
             
 
         params, report, fr_out = run_fr(origin, dest, reverse=True, graph=g)
@@ -384,13 +386,15 @@ def compare_adjacent(sorted_list):
 
     return
 
-def run_total_exp(host_dict, out_dir, prov_file):
+#def run_total_exp(host_dict, out_dir, prov_file):
+def run_total_exp(host_dict, out_dir):
 
     score_list = []
 
     for index, origin in enumerate(host_dict):
         # Ping and build a chain
-        out_data, params = compare_perf(origin, host_dict[origin], prov_file) 
+        #out_data, params = compare_perf(origin, host_dict[origin], prov_file) 
+        out_data, params = compare_perf(origin, host_dict[origin])
         # Log that as a json 
         origin_file = os.path.join(out_dir, origin+".json")
         save_score_dict(origin_file, out_data)
@@ -1276,13 +1280,14 @@ if __name__  == "__main__":
         # the output dir is second
         outdir = sys.argv[3]
         # the provider file
-        prov_file = sys.argv[4]
+        #prov_file = sys.argv[4]
 
         # Load the config file 
         host_dict = load_config(filename)
    
         # Run the whole thing
-        run_total_exp(host_dict, outdir, prov_file)
+        #run_total_exp(host_dict, outdir, prov_file)
+        run_total_exp(host_dict, outdir)
 
     elif command == "--check":
         data_dir = sys.argv[2]

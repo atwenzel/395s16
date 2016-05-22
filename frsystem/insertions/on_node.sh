@@ -1,1 +1,1 @@
-ssh -T -oStrictHostKeyChecking=no "northwestern_oak@"$1 $2
+ssh -T -oStrictHostKeyChecking=no "northwestern_audit@"$1 $2
